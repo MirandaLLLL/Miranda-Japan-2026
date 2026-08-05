@@ -1,0 +1,399 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Miranda in Japan · 2026</title>
+  <meta name="description" content="Miranda in Japan · 2026 手机端优先东京旅行地图：浅草、东京塔、富士山、镰仓江之岛、涩谷柯南半日与京都转场。">
+  <link rel="preconnect" href="https://unpkg.com">
+  <link rel="preconnect" href="https://a.basemaps.cartocdn.com">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <style>
+    :root {
+      --cream: #f5efe4;
+      --cream-2: #fffaf2;
+      --paper: #fbf7ef;
+      --ink: #171717;
+      --soft-ink: #4f4f4d;
+      --muted: #817c73;
+      --line: rgba(23, 23, 23, .12);
+      --blue: #506c7f;
+      --blue-2: #dbe4e8;
+      --camel: #b79267;
+      --burgundy: #7a3945;
+      --grey: #d8d4cd;
+      --shadow: 0 18px 45px rgba(34, 28, 18, .10);
+      --radius: 8px;
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; width: 100%; min-height: 100%; overflow-x: hidden; }
+    body {
+      background: var(--cream);
+      color: var(--ink);
+      font-family: ui-serif, Georgia, "Songti SC", "Noto Serif CJK SC", serif;
+      line-height: 1.55;
+    }
+    button, a { -webkit-tap-highlight-color: transparent; }
+    a { color: inherit; }
+    .app { width: 100%; max-width: 520px; margin: 0 auto; background: var(--paper); min-height: 100vh; box-shadow: 0 0 0 1px rgba(0,0,0,.04); }
+
+    .hero {
+      min-height: 78svh;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      padding: max(22px, env(safe-area-inset-top)) 18px 18px;
+      color: #fffaf2;
+      background:
+        linear-gradient(180deg, rgba(0,0,0,.08) 0%, rgba(0,0,0,.2) 36%, rgba(0,0,0,.76) 100%),
+        url("https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?auto=format&fit=crop&w=1200&q=82") center/cover;
+    }
+    .eyebrow { font: 700 11px/1.2 ui-sans-serif, system-ui, sans-serif; letter-spacing: .14em; text-transform: uppercase; color: rgba(255,250,242,.74); }
+    h1 { margin: 10px 0 8px; font-size: clamp(38px, 13vw, 62px); line-height: .92; letter-spacing: 0; font-weight: 500; }
+    .hero p { margin: 0; max-width: 30em; color: rgba(255,250,242,.84); font-size: 15px; }
+    .hero-meta { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      min-height: 28px;
+      padding: 5px 9px;
+      border: 1px solid rgba(255,250,242,.34);
+      border-radius: 999px;
+      background: rgba(255,250,242,.10);
+      color: inherit;
+      font: 650 12px/1.2 ui-sans-serif, system-ui, sans-serif;
+      backdrop-filter: blur(10px);
+    }
+
+    .map-wrap { position: sticky; top: 0; z-index: 20; background: var(--cream-2); border-bottom: 1px solid var(--line); }
+    #map { width: 100%; height: 42svh; min-height: 295px; background: var(--blue-2); }
+    .tabs {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding: 10px 12px 12px;
+      scrollbar-width: none;
+    }
+    .tabs::-webkit-scrollbar { display: none; }
+    .tab {
+      flex: 0 0 auto;
+      border: 1px solid var(--line);
+      background: rgba(255,250,242,.86);
+      color: var(--soft-ink);
+      border-radius: 999px;
+      padding: 9px 12px;
+      font: 700 12px/1 ui-sans-serif, system-ui, sans-serif;
+      white-space: nowrap;
+    }
+    .tab.active { background: var(--ink); color: var(--cream-2); border-color: var(--ink); }
+
+    main { padding: 18px 14px calc(26px + var(--safe-bottom)); }
+    .panel {
+      background: var(--cream-2);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 15px;
+      margin-bottom: 12px;
+    }
+    .kicker { margin: 0 0 6px; color: var(--blue); font: 800 11px/1.2 ui-sans-serif, system-ui, sans-serif; letter-spacing: .12em; text-transform: uppercase; }
+    h2 { margin: 0 0 6px; font-size: 28px; line-height: 1.05; font-weight: 500; letter-spacing: 0; }
+    h3 { margin: 0 0 6px; font-size: 20px; line-height: 1.16; font-weight: 500; letter-spacing: 0; }
+    p { margin: 0; }
+    .muted { color: var(--muted); font-size: 13px; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
+    .mini { border-top: 1px solid var(--line); padding-top: 10px; margin-top: 10px; }
+    .label { color: var(--muted); font: 800 10px/1.2 ui-sans-serif, system-ui, sans-serif; letter-spacing: .12em; text-transform: uppercase; margin-bottom: 4px; }
+    .value { font: 650 13px/1.35 ui-sans-serif, system-ui, sans-serif; color: var(--soft-ink); }
+    .alert { border-left: 4px solid var(--burgundy); }
+    .alert.blue { border-left-color: var(--blue); }
+
+    .route { color: var(--soft-ink); font-size: 14px; }
+    .route strong { color: var(--ink); }
+    .day-head { margin: 2px 0 12px; }
+    .day-head .date { color: var(--muted); font: 700 12px/1.2 ui-sans-serif, system-ui, sans-serif; }
+    .section-title { margin: 18px 2px 8px; color: var(--blue); font: 800 11px/1.2 ui-sans-serif, system-ui, sans-serif; letter-spacing: .14em; text-transform: uppercase; }
+    .timeline { position: relative; padding-left: 18px; }
+    .timeline::before { content: ""; position: absolute; left: 5px; top: 10px; bottom: 10px; width: 1px; background: var(--line); }
+    .card {
+      position: relative;
+      background: var(--cream-2);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 13px;
+      margin-bottom: 10px;
+      box-shadow: 0 10px 24px rgba(34, 28, 18, .07);
+    }
+    .card::before {
+      content: "";
+      position: absolute;
+      left: -17px;
+      top: 18px;
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: var(--blue);
+      box-shadow: 0 0 0 4px var(--paper);
+    }
+    .card.food::before { background: var(--camel); }
+    .card.drink::before { background: var(--burgundy); }
+    .card.transport::before { background: var(--muted); }
+    .time { color: var(--muted); font: 800 11px/1.2 ui-sans-serif, system-ui, sans-serif; letter-spacing: .08em; text-transform: uppercase; }
+    .name { margin: 4px 0 5px; font-size: 17px; line-height: 1.22; font-weight: 600; }
+    .desc { color: var(--soft-ink); font-size: 13px; }
+    .status {
+      display: inline-flex;
+      margin-top: 9px;
+      border-radius: 5px;
+      padding: 4px 7px;
+      background: var(--blue-2);
+      color: #263d4a;
+      font: 800 11px/1.2 ui-sans-serif, system-ui, sans-serif;
+    }
+    .status.warn { background: #f1dfdf; color: var(--burgundy); }
+    details { margin-top: 10px; border-top: 1px solid var(--line); padding-top: 9px; }
+    summary { cursor: pointer; color: var(--ink); font: 750 12px/1.3 ui-sans-serif, system-ui, sans-serif; }
+    .photo-note { margin-top: 7px; color: var(--muted); font-size: 13px; }
+    .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+    .btn {
+      min-height: 40px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      border-radius: 7px;
+      border: 1px solid var(--ink);
+      background: var(--ink);
+      color: var(--cream-2);
+      text-decoration: none;
+      font: 800 12px/1.2 ui-sans-serif, system-ui, sans-serif;
+    }
+    .btn.secondary { background: transparent; color: var(--ink); }
+    .leaflet-container { font-family: ui-sans-serif, system-ui, sans-serif; }
+    .leaflet-popup-content-wrapper { border-radius: 8px; }
+    .leaflet-control-attribution { font-size: 9px; }
+
+    @media (max-width: 360px) {
+      .grid { grid-template-columns: 1fr; }
+      .actions { grid-template-columns: 1fr; }
+      h2 { font-size: 24px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="hero">
+      <div class="eyebrow">Tokyo · Fuji · Kamakura</div>
+      <h1>Miranda in Japan · 2026</h1>
+      <p>一份可执行但不僵硬的东京段旅行地图：第一次东京必去体验、富士山天气窗口、镰仓海边、涩谷《万圣节的新娘》城市拍照，以及轻量购物。</p>
+      <div class="hero-meta">
+        <span class="chip">2026.10.03–10.08</span>
+        <span class="chip">手机端优先</span>
+        <span class="chip">未核实信息已标注</span>
+      </div>
+    </header>
+
+    <section class="map-wrap" aria-label="交互式地图">
+      <div id="map"></div>
+      <nav class="tabs" id="tabs" aria-label="日期选择"></nav>
+    </section>
+
+    <main id="content"></main>
+  </div>
+
+  <script>
+    const TRIP = {
+      title: "Miranda in Japan · 2026",
+      anchor: { name: "东京站 / Tokyo Station（临时交通锚点，非酒店）", lat: 35.681236, lng: 139.767125 },
+      days: [
+        { id: 0, label: "总览", color: "#171717", title: "总览", date: "Tokyo chapter" },
+        { id: 1, label: "10/3 抵达", color: "#817c73", date: "2026年10月3日 · 晚上", title: "东京抵达夜", theme: "低强度、航班延误友好", routeLogic: "酒店信息缺失，地图暂以东京站/丸之内为交通锚点；实际晚餐应改为酒店步行15分钟内。", outfit: "黑色轻外套或 blazer、白/灰合身上衣、直筒牛仔裤、舒适球鞋、小号黑色斜挎包。", locations: [
+          { name: "东京站 / 東京駅 / Tokyo Station", lat: 35.681236, lng: 139.767125, type: "transport", time: "晚上", desc: "抵达后的临时交通锚点；不是酒店。若酒店在其他区域，第一晚路线应整体迁移到酒店附近。", status: "待补充酒店地址", photo: "拍红砖站房或站内灯光，35mm，利用行李与城市灯光做抵达感。" },
+          { name: "丸之内仲通 / Marunouchi Naka-dori", lat: 35.680172, lng: 139.76288, type: "spot", time: "20:30", desc: "只做轻松散步，不跨城、不排队、不预约。", status: "建议项", photo: "夜晚橱窗和街树纵深构图，50mm 或手机2x，人物走在画面三分线。" }
+        ] },
+        { id: 2, label: "10/4 经典", color: "#506c7f", date: "2026年10月4日", title: "浅草 · 丸之内 · 东京塔夜", theme: "第一次东京必去体验 + 东京塔景观酒吧", routeLogic: "东东京上午、东京站下午、芝公园/东京塔晚上，换乘清晰，不来回折返。", outfit: "象牙白 blazer、白色上衣、高腰长裤或直筒牛仔、乐福鞋或精致球鞋、结构感手袋、金色耳饰。", locations: [
+          { name: "雷门 / 雷門 / Kaminarimon", lat: 35.71113, lng: 139.79637, type: "spot", time: "08:30", desc: "经典东京开场，越早越适合拍照。", status: "坐标已核实", photo: "稍微偏离正中，避开最拥挤的人流；24-35mm 拍灯笼与门柱。" },
+          { name: "浅草寺 / 浅草寺 / Senso-ji", lat: 35.71345, lng: 139.79595, type: "spot", time: "09:10", desc: "保留本堂、五重塔外观和短暂停留，不把上午塞成寺庙清单。", status: "坐标已核实", photo: "上午光线从侧面打入，拍朱红建筑层次；人物穿奶油白会更干净。" },
+          { name: "KITTE 丸之内屋上庭园 / KITTE Garden", lat: 35.679837, lng: 139.765088, type: "spot", time: "14:30", desc: "拍东京站红砖立面和丸之内秩序感，适合作为浅草后慢下来的一站。", status: "开放时间需出发前确认", photo: "从屋上往东京站方向俯拍，禁止三脚架/商业拍摄；35mm 或手机1x。" },
+          { name: "东京塔 / 東京タワー / Tokyo Tower", lat: 35.65861, lng: 139.74541, type: "spot", time: "17:10", desc: "蓝调时刻到达，先拍塔下与街景，不强制登塔。", status: "票价与开放时间需出发前确认", photo: "从芝公园/增上寺方向找建筑框景，夕方拍塔身亮灯前后两组。" },
+          { name: "Sky Bar & Dining Stellar Garden / ステラガーデン", lat: 35.65546, lng: 139.74704, type: "drink", time: "19:00", desc: "东京塔清晰视野候选酒吧；2026年10月营业、座位、低消、摄影规则都需再次核实。", status: "待核实 · 需预约塔景座位", photo: "靠窗塔景优先，人物侧脸+东京塔虚化；低光环境用手机夜景模式，不开闪光。" }
+        ] },
+        { id: 3, label: "10/5 富士", color: "#6b8190", date: "2026年10月5日", title: "河口湖富士山日", theme: "天气敏感的最佳照片日", routeLogic: "只保留一个高处视角、一个湖畔视角和一个慢咖啡/缆车备选；不塞满忍野八海等远点。", swapRule: "出发前48-72小时比较10月5日与10月6日云量、雨、风和富士能见度；若10月6日更清晰，则与镰仓日互换。", outfit: "奶油色针织、驼色/米色风衣、直筒牛仔或长裙、防风外套、舒适球鞋、墨镜。", locations: [
+          { name: "下吉田站 / 下吉田駅 / Shimoyoshida Station", lat: 35.4976, lng: 138.8034, type: "transport", time: "09:20", desc: "去新仓山浅间公园的公共交通落点，建议早出发。", status: "交通班次需确认", photo: "站牌与山地方向作背景，记录日归开始。" },
+          { name: "忠灵塔 / 忠霊塔 / Chureito Pagoda", lat: 35.50129, lng: 138.80136, type: "spot", time: "10:00", desc: "富士山经典高处视角。需要爬台阶，雨天或低云时不强求。", status: "天气敏感", photo: "塔在前景、富士在远景，70mm左右压缩层次；云多时改拍红塔与山城。" },
+          { name: "河口湖站 / 河口湖駅 / Kawaguchiko Station", lat: 35.498236, lng: 138.768879, type: "transport", time: "12:30", desc: "午餐与湖区移动中转点，可在此决定是否继续湖畔或改室内。", status: "交通班次需确认", photo: "富士山可见时拍站前与山体同框，手机2x更干净。" },
+          { name: "大石公园 / 大石公園 / Oishi Park", lat: 35.52294, lng: 138.74662, type: "spot", time: "14:00", desc: "湖畔富士视角，适合慢走和拍人像。", status: "天气敏感", photo: "低机位把花草/湖面放前景，富士在画面上三分线；奶油和牛仔蓝很合适。" },
+          { name: "富士山全景缆车 / 富士山パノラマロープウェイ", lat: 35.50406, lng: 138.7722, type: "spot", time: "16:00", desc: "作为能见度好、体力允许时的加分项；强风或恶劣天气可能停运。", status: "开放/运休需出发前确认", photo: "上山后拍湖面弧线与远山，广角横构图；人像放边缘避免遮挡山景。" }
+        ] },
+        { id: 4, label: "10/6 镰仓", color: "#7d8c88", date: "2026年10月6日", title: "镰仓 · 江之岛海边电影感", theme: "海边、江之电、夕阳", routeLogic: "镰仓站进、长谷文化点、江之电到高校前和江之岛，少寺庙、多步行氛围。", swapRule: "若10月5日富士能见度差且10月6日更清晰，本日与富士山日互换。", outfit: "奶油针织、直筒蓝色牛仔、轻风衣、乐福鞋或精致球鞋、软皮斜挎包、小金耳饰。", locations: [
+          { name: "镰仓站 / 鎌倉駅 / Kamakura Station", lat: 35.319225, lng: 139.550365, type: "transport", time: "09:30", desc: "从东京出发的日归入口，先走小町通和八幡宫方向。", status: "交通班次需确认", photo: "站前街景和江之电元素，35mm 记录城市切换。" },
+          { name: "鹤冈八幡宫 / 鶴岡八幡宮 / Tsurugaoka Hachimangu", lat: 35.3261, lng: 139.5564, type: "spot", time: "10:20", desc: "保留一个代表性文化点，不继续叠加太多寺社。", status: "坐标已核实", photo: "参道纵深和朱红建筑，人物从画面侧边走入，避免挡住参拜动线。" },
+          { name: "高德院镰仓大佛 / 高徳院 / Kotoku-in", lat: 35.31687, lng: 139.53582, type: "spot", time: "12:40", desc: "长谷区域核心点，午后可与咖啡/海边散步衔接。", status: "开放时间需出发前确认", photo: "低机位仰拍大佛体量，人物小比例站侧边；50mm 拍安静肖像。" },
+          { name: "镰仓高校前 / 鎌倉高校前駅 / Kamakurakokomae", lat: 35.30607, lng: 139.50083, type: "spot", time: "15:20", desc: "江之电与海的经典画面。不要挡路，不在道口长时间停留。", status: "尊重居民与交通", photo: "在人行安全区域拍海与铁道，不追车、不站车道；用连拍抓列车经过。" },
+          { name: "江之岛弁天桥 / 江の島弁天橋 / Enoshima Benten Bridge", lat: 35.30385, lng: 139.48321, type: "spot", time: "16:30", desc: "把当天收束在海边夕阳，天气差则提前回东京。", status: "天气友好时推荐", photo: "逆光剪影、海风发丝和桥的引导线；夕阳前30分钟最佳。" }
+        ] },
+        { id: 5, label: "10/7 涩谷", color: "#7a3945", date: "2026年10月7日", title: "表参道 · 涩谷柯南半日 · 限定购物", theme: "现代东京、城市拍照、非动漫购物巡礼", routeLogic: "上午表参道建筑/咖啡，下午进入涩谷；柯南只作为《万圣节的新娘》城市场景拍照线索，购物限一个街区/商场。", outfit: "黑色 oversized blazer、白色合身T恤或背心、直筒牛仔/西裤、皮质球鞋、黑色肩背包、墨镜、低马尾。", locations: [
+          { name: "表参道站 / 表参道駅 / Omotesando Station", lat: 35.665247, lng: 139.712314, type: "transport", time: "10:00", desc: "现代东京日的入口，主打建筑和街拍。", status: "建议项", photo: "路口斑马线与树影，黑白奶油穿搭更像杂志街拍。" },
+          { name: "Blue Bottle Coffee 青山 / ブルーボトルコーヒー 青山", lat: 35.66549, lng: 139.71336, type: "food", time: "10:20", desc: "设计感咖啡休息点；非硬性，若排队可替换附近咖啡。", status: "营业时间需确认", photo: "窗边自然光、咖啡杯与金属/木质材质，35mm 俯拍一张即可。" },
+          { name: "表参道之丘 / 表参道ヒルズ / Omotesando Hills", lat: 35.66717, lng: 139.70858, type: "spot", time: "11:30", desc: "限定购物时段放在这里或涩谷 PARCO 二选一，不做全天购物。", status: "购物边界：90分钟以内", photo: "建筑线条与玻璃反射，人物靠边走动，避免购物袋过多入镜。" },
+          { name: "忠犬八公像 / ハチ公像 / Hachiko", lat: 35.659057, lng: 139.700472, type: "spot", time: "14:00", desc: "涩谷城市段入口，作为柯南半日的现实街景开场。", status: "坐标已核实", photo: "不必排队硬合影，可拍人潮与车站出口的城市感。" },
+          { name: "涩谷十字路口 / 渋谷スクランブル交差点", lat: 35.6595, lng: 139.7005, type: "spot", time: "14:30", desc: "《万圣节的新娘》的涩谷城市氛围参考点；只拍城市，不做动漫店巡礼。", status: "柯南半日 · 城市拍照", photo: "过街时拍动态，站在人行道等候区拍广角；注意行人安全。" },
+          { name: "SHIBUYA SKY / 渋谷スカイ", lat: 35.65845, lng: 139.70205, type: "spot", time: "16:30", desc: "建议预约日落前入场；屋顶开放受天气影响，大件行李和屋顶携带物有限制。", status: "票务/天气/携带规则需确认", photo: "日落前拍城市全景，蓝调时刻拍涩谷灯光；深色外套轮廓最清楚。" },
+          { name: "涩谷 PARCO / 渋谷PARCO", lat: 35.66202, lng: 139.69965, type: "spot", time: "—", desc: "仅作为顺路备选；若2026年有柯南官方活动再加入，不得虚构。", status: "2026年柯南活动尚未公布", photo: "如经过，拍现代建筑和街区夜色即可。" }
+        ] },
+        { id: 6, label: "10/8 转场", color: "#b79267", date: "2026年10月8日", title: "东京弹性早晨 · 京都转场", theme: "行李日，不塞满", routeLogic: "根据新干线时间选择东京站/丸之内咖啡或银座短走；不再新增完整购物日。", outfit: "柔软针织、直筒长裤、舒适球鞋、轻外套、便于取物的 tote 或斜挎包。", locations: [
+          { name: "东京站 / 東京駅 / Tokyo Station", lat: 35.681236, lng: 139.767125, type: "transport", time: "上午", desc: "寄存/取行李、新干线出发；具体车次未提供。", status: "新干线时间待补充", photo: "站房外观或月台秩序感，拍一张干净的转场照。" },
+          { name: "银座四丁目交差点 / Ginza 4-chome Crossing", lat: 35.67192, lng: 139.76503, type: "spot", time: "—", desc: "若下午才去京都，可选银座短走和最后补货；控制在90分钟内。", status: "可选 · 不做第二个购物日", photo: "Wako 钟楼与路口人流，50mm 拍都市优雅感。" }
+        ] }
+      ]
+    };
+
+    const map = L.map("map", { zoomControl: false, attributionControl: true }).setView([35.681236, 139.767125], 11);
+    L.control.zoom({ position: "topright" }).addTo(map);
+    L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", { maxZoom: 19 }).addTo(map);
+
+    const tabsEl = document.getElementById("tabs");
+    const contentEl = document.getElementById("content");
+    let current = 0;
+    let layers = [];
+
+    function esc(value) {
+      return String(value ?? "").replace(/[&<>"']/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[ch]));
+    }
+    function googleUrl(loc) {
+      return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${loc.lat},${loc.lng}`)}`;
+    }
+    function appleUrl(loc) {
+      return `https://maps.apple.com/?ll=${loc.lat},${loc.lng}&q=${encodeURIComponent(loc.name)}`;
+    }
+    function iconFor(loc, color) {
+      const glyph = loc.type === "food" ? "餐" : loc.type === "drink" ? "酒" : loc.type === "transport" ? "站" : "景";
+      return L.divIcon({
+        className: "",
+        html: `<div style="width:28px;height:28px;border-radius:50%;background:${color};color:#fffaf2;border:2px solid #fffaf2;display:flex;align-items:center;justify-content:center;font:800 11px system-ui;box-shadow:0 8px 18px rgba(0,0,0,.24)">${glyph}</div>`,
+        iconSize: [28, 28],
+        iconAnchor: [14, 14],
+        popupAnchor: [0, -15]
+      });
+    }
+    function clearLayers() {
+      layers.forEach(layer => map.removeLayer(layer));
+      layers = [];
+    }
+    function dayById(id) {
+      return TRIP.days.find(day => day.id === id);
+    }
+    function showMap(id) {
+      clearLayers();
+      const bounds = [];
+      if (id === 0) {
+        TRIP.days.slice(1).forEach(day => day.locations.forEach(loc => {
+          const marker = L.circleMarker([loc.lat, loc.lng], { radius: 4.5, color: "#fffaf2", weight: 1.5, fillColor: day.color, fillOpacity: .94 })
+            .addTo(map)
+            .bindPopup(`<strong>${esc(loc.name)}</strong><br>${esc(day.label)}`);
+          layers.push(marker);
+          bounds.push([loc.lat, loc.lng]);
+        }));
+      } else {
+        const day = dayById(id);
+        const route = day.locations.filter(loc => loc.time !== "—");
+        day.locations.forEach(loc => {
+          const marker = L.marker([loc.lat, loc.lng], { icon: iconFor(loc, day.color) })
+            .addTo(map)
+            .bindPopup(`<strong>${esc(loc.name)}</strong><br>${esc(loc.time)} · ${esc(loc.status)}<br><a href="${googleUrl(loc)}" target="_blank" rel="noreferrer">Google Maps</a> · <a href="${appleUrl(loc)}" target="_blank" rel="noreferrer">Apple Maps</a>`);
+          layers.push(marker);
+          bounds.push([loc.lat, loc.lng]);
+        });
+        if (route.length > 1) {
+          const line = L.polyline(route.map(loc => [loc.lat, loc.lng]), { color: day.color, weight: 3, opacity: .58, dashArray: "7 7" }).addTo(map);
+          layers.push(line);
+        }
+      }
+      if (bounds.length) map.fitBounds(bounds, { padding: [28, 28], maxZoom: id === 0 ? 9 : 14 });
+    }
+    function overview() {
+      return `
+        <section class="panel">
+          <p class="kicker">Route Check</p>
+          <h2>先优化路线，再做地图</h2>
+          <p class="muted">10/4 按浅草 → 丸之内 → 东京塔顺走；10/5 富士与10/6镰仓组成天气互换组；10/7 柯南只保留半天以内的涩谷城市拍照，不展开动漫购物巡礼。</p>
+          <div class="grid mini">
+            <div><div class="label">酒店</div><div class="value">未提供，第一晚需补充后改为酒店附近</div></div>
+            <div><div class="label">视觉</div><div class="value">暖奶油、黑、灰、低饱和蓝</div></div>
+            <div><div class="label">重点</div><div class="value">东京初体验、富士、镰仓、涩谷、购物一次</div></div>
+            <div><div class="label">诚信</div><div class="value">未来活动/价格/开放时间不虚构</div></div>
+          </div>
+        </section>
+        <section class="panel alert">
+          <p class="kicker">Weather Logic</p>
+          <h3>富士山日必须动态决策</h3>
+          <p class="muted">出发前48-72小时比较 10月5日 与 10月6日 的云量、降雨、风和富士能见度。若 10月6日 更清晰，就把富士和镰仓对调。</p>
+        </section>
+        <section class="panel alert blue">
+          <p class="kicker">Reservation</p>
+          <h3>东京塔景观酒吧：待核实</h3>
+          <p class="muted">候选为 Sky Bar & Dining Stellar Garden。当前官方信息显示其位于 The Prince Park Tower Tokyo 33F，并提供东京塔景观和预约入口；但 2026年10月的营业、座位、低消、着装和摄影政策仍需发布前确认。</p>
+        </section>
+        <div class="section-title">每日入口</div>
+        ${TRIP.days.slice(1).map(day => `<button class="panel" style="width:100%;text-align:left;border-color:${day.color}" onclick="go(${day.id})"><p class="kicker">${esc(day.label)}</p><h3>${esc(day.title)}</h3><p class="muted">${esc(day.theme)}</p></button>`).join("")}
+      `;
+    }
+    function card(loc, day) {
+      const warn = /待核实|天气|确认|公布|补充/.test(loc.status) ? " warn" : "";
+      return `
+        <article class="card ${esc(loc.type)}">
+          <div class="time">${esc(loc.time)}</div>
+          <div class="name">${esc(loc.name)}</div>
+          <p class="desc">${esc(loc.desc)}</p>
+          <span class="status${warn}">${esc(loc.status)}</span>
+          <details open>
+            <summary>拍照时间与构图</summary>
+            <p class="photo-note">${esc(loc.photo)}</p>
+          </details>
+          <div class="actions">
+            <a class="btn" target="_blank" rel="noreferrer" href="${googleUrl(loc)}">Google Maps</a>
+            <a class="btn secondary" target="_blank" rel="noreferrer" href="${appleUrl(loc)}">Apple Maps</a>
+          </div>
+        </article>`;
+    }
+    function renderDay(id) {
+      const day = dayById(id);
+      const main = day.locations.filter(loc => loc.time !== "—");
+      const alt = day.locations.filter(loc => loc.time === "—");
+      return `
+        <section class="day-head">
+          <div class="date">${esc(day.date)}</div>
+          <h2>${esc(day.title)}</h2>
+          <p class="muted">${esc(day.theme)}</p>
+        </section>
+        <section class="panel"><p class="kicker">Route Logic</p><p class="route"><strong>路线判断：</strong>${esc(day.routeLogic)}</p>${day.swapRule ? `<p class="route mini"><strong>互换逻辑：</strong>${esc(day.swapRule)}</p>` : ""}<p class="route mini"><strong>穿搭：</strong>${esc(day.outfit)}</p></section>
+        <div class="section-title">行程</div>
+        <section class="timeline">${main.map(loc => card(loc, day)).join("")}</section>
+        ${alt.length ? `<div class="section-title">备选</div><section class="timeline">${alt.map(loc => card(loc, day)).join("")}</section>` : ""}
+      `;
+    }
+    function go(id) {
+      current = id;
+      [...tabsEl.children].forEach(btn => btn.classList.toggle("active", Number(btn.dataset.id) === id));
+      contentEl.innerHTML = id === 0 ? overview() : renderDay(id);
+      showMap(id);
+      window.scrollTo({ top: document.querySelector(".map-wrap").offsetTop, behavior: "smooth" });
+      const active = tabsEl.querySelector(`[data-id="${id}"]`);
+      if (active) active.scrollIntoView({ block: "nearest", inline: "center", behavior: "smooth" });
+    }
+    TRIP.days.forEach(day => {
+      const btn = document.createElement("button");
+      btn.className = "tab";
+      btn.dataset.id = day.id;
+      btn.type = "button";
+      btn.textContent = day.label;
+      btn.addEventListener("click", () => go(day.id));
+      tabsEl.appendChild(btn);
+    });
+    go(current);
+  </script>
+</body>
+</html>
